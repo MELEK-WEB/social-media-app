@@ -12,6 +12,9 @@ RUN npm install --force
 # Copy only necessary files
 COPY . .
 
+# Create a volume for the assets folder
+VOLUME /app/public/assets
+
 # Expose the port your app runs on (e.g., 6060)
 EXPOSE 6060
 
