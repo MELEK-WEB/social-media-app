@@ -1,0 +1,188 @@
+stages:
+  - build
+  - runUnitTest
+  - runIntegrationTest
+  - build_Dev
+  - devUnitTest
+  - devIntegrationTest
+  - build_docker_images
+  - deploy
+  
+
+
+image: node:16
+
+variables:
+  NODE_VERSION: 18
+  DOCKER_IMAGE_NAME: ahmedbenjannet/projet-docker
+  DOCKER_IMAGE_TAG: $CI_COMMIT_REF_NAME
+
+before_script:
+  - echo "Before script steps, if any"
+
+build_backend:
+  stage: build
+  
+  script:
+   - cd server
+   - npm install --force
+   - npm start &
+   - sleep 10  # Adjust the sleep duration based on how long it takes for your server to start
+   - npm test
+  
+  services:
+   - name: mongo:4.4-bionic
+     alias: mongodb
+
+  only:
+    - merge_requests
+
+
+build_frontend:
+  stage: build
+  
+  script:
+    - cd client
+    - npm install --force
+    - npm run build
+  artifacts:
+    paths:
+      - client/build/
+  only:
+    - merge_requests 
+
+runUnitTest:
+  stage: runUnitTest
+  
+  script:
+   - cd server
+   - npm install --force
+   - npm start &
+   - sleep 10  # Adjust the sleep duration based on how long it takes for your server to start
+   - npm run testUnit
+  
+  services:
+   - name: mongo:4.4-bionic
+     alias: mongodb
+
+  only:
+    - merge_requests
+
+runIntegrationTest:
+  stage: runIntegrationTest
+  
+  script:
+   - cd server
+   - npm install --force
+   - npm start &
+   - sleep 10  # Adjust the sleep duration based on how long it takes for your server to start
+   - npm run testIntegration
+  
+  services:
+   - name: mongo:4.4-bionic
+     alias: mongodb
+
+  only:
+    - merge_requests
+
+
+#SecoundPipline !!! !reference 
+build_Dev_frontend:
+  stage: build_Dev
+  
+  script:
+    - cd client
+    - npm install --force
+    - npm run build
+  artifacts:
+    paths:
+      - client/build/
+  only:
+    - Dev 
+
+build_Dev_backend:
+  stage: build_Dev
+  
+  script:
+   - cd server
+   - npm install --force
+   - npm start &
+   - sleep 10  # Adjust the sleep duration based on how long it takes for your server to start
+   - npm test
+  
+  services:
+   - name: mongo:4.4-bionic
+     alias: mongodb
+
+  only:
+    - Dev
+  
+runUnitTest_Dev:
+  stage: devUnitTest
+  
+  script:
+   - cd server
+   - npm install --force
+   - npm start &
+   - sleep 10  # Adjust the sleep duration based on how long it takes for your server to start
+   - npm run testUnit
+  
+  services:
+   - name: mongo:4.4-bionic
+     alias: mongodb
+
+  only:
+    - Dev
+
+runIntegrationTest_Dev:
+  stage: devIntegrationTest
+  
+  script:
+   - cd server
+   - npm install --force
+   - npm start &
+   - sleep 10  # Adjust the sleep duration based on how long it takes for your server to start
+   - npm run testIntegration
+  
+  services:
+   - name: mongo:4.4-bionic
+     alias: mongodb
+
+  only:
+    - Dev
+
+  # New stages for the third pipeline
+build_and_push_docker_image:
+  stage: build_docker_images
+  image: creatiwww/docker-compose:latest
+
+  script:
+  - echo "Building and pushing Docker image for release"
+  - docker login -u ahmedbenjannet -p dckr_pat_EQQV2pCFZg__RL7LRoz8al2Lki4
+  - docker-compose -f docker-compose.yml build
+  - export RELEASE_NUMBER=$(echo $CI_COMMIT_REF_NAME)
+  - docker tag social-media-devops_frontend ahmedbenjannet/projet-docker:frontend_$RELEASE_NUMBER
+  - docker tag social-media-devops_backend ahmedbenjannet/projet-docker:backend_$RELEASE_NUMBER
+  - docker push ahmedbenjannet/projet-docker:frontend_$RELEASE_NUMBER
+  - docker push ahmedbenjannet/projet-docker:backend_$RELEASE_NUMBER
+
+  services:
+  - docker:dind
+  only:
+    - /^release-.*$/
+        
+        
+
+deploy_release:
+  stage: deploy
+  image: creatiwww/docker-compose:latest
+  script:
+    - echo "Deploying release"
+    - docker-compose -f docker-compose.yml pull
+    - docker-compose -f docker-compose.yml up -d
+
+  services:
+  - docker:dind
+  only:
+    - /^release-.*$/
+        
