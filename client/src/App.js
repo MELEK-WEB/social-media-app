@@ -15,7 +15,7 @@ function App() {
 
   return (
     <div className="app">
-      <BrowserRouter>
+      <BrowserRouter baseName="/social-media-app">
         <ThemeProvider theme={theme}>
           <CssBaseline />
           <Routes>
